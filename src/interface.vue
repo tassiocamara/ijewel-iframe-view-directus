@@ -3,9 +3,9 @@
     <!-- Campo de edição do slug (o valor do próprio field) -->
     <v-input
       :model-value="localValue"
-      :readonly="props.readOnly"
-      :disabled="props.disabled"
       placeholder="Digite o slug do iJewel (ex.: fe69838)"
+      :disabled="isLocked"
+      :readonly="isLocked"
       @update:modelValue="onUpdate"
     />
 
@@ -43,9 +43,10 @@ import { computed, ref, watch } from 'vue'
  */
 
 const props = defineProps({
-  value: { type: String, default: '' }, // valor atual do campo
-  readOnly: { type: Boolean, default: false },
+  value: { type: String, default: '' },
   disabled: { type: Boolean, default: false },
+  readonly: { type: Boolean, default: false },
+  mode: { type: String, default: 'edit' }, // 'read' | 'preview' | 'edit'
 })
 
 const emit = defineEmits(['input']) // padrão do Directus: emitir 'input' com o novo valor
@@ -59,8 +60,12 @@ watch(
   }
 )
 
+const isLocked = computed(() => {
+  return props.disabled || props.readonly || props.mode === 'read'
+})
+
 function onUpdate(v) {
-  if (props.readOnly || props.disabled) return
+  if (isLocked.value) return
   localValue.value = v || ''
   emit('input', localValue.value)
 }
@@ -87,4 +92,9 @@ const iframeSrc = computed(() => {
 .gap-3 { gap: 12px; }
 .rounded { border-radius: 8px; }
 .overflow-hidden { overflow: hidden; }
+
+/* evita foco e clique quando travado (hardening visual) */
+:deep(input:disabled), :deep(textarea:disabled) {
+  pointer-events: none;
+}
 </style>
