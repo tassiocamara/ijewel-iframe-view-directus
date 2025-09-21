@@ -19,13 +19,11 @@
 		"host": "^10.10.0"
 	},
 	"scripts": {
-		"build": "directus-extension build",
-		"dev": "directus-extension build -w --no-minify",
-		"link": "directus-extension link",
-		"validate": "directus-extension validate"
+		"build": "npx -y -p @directus/extensions-sdk@latest directus-extension build",
+		"dev": "npx -y -p @directus/extensions-sdk@latest directus-extension dev"
 	},
 	"devDependencies": {
-		"@directus/extensions-sdk": "16.0.2",
+		"@directus/extensions-sdk": "11.12.x",
 		"vue": "^3.5.21"
 	}
 }
