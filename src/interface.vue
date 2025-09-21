@@ -3,6 +3,8 @@
     <!-- Campo de edição do slug (o valor do próprio field) -->
     <v-input
       :model-value="localValue"
+      :readonly="props.readOnly"
+      :disabled="props.disabled"
       placeholder="Digite o slug do iJewel (ex.: fe69838)"
       @update:modelValue="onUpdate"
     />
@@ -42,6 +44,8 @@ import { computed, ref, watch } from 'vue'
 
 const props = defineProps({
   value: { type: String, default: '' }, // valor atual do campo
+  readOnly: { type: Boolean, default: false },
+  disabled: { type: Boolean, default: false },
 })
 
 const emit = defineEmits(['input']) // padrão do Directus: emitir 'input' com o novo valor
@@ -56,6 +60,7 @@ watch(
 )
 
 function onUpdate(v) {
+  if (props.readOnly || props.disabled) return
   localValue.value = v || ''
   emit('input', localValue.value)
 }
