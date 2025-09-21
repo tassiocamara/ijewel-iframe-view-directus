@@ -35,33 +35,52 @@
 
 <script setup>
 import { computed, ref, watch } from 'vue'
+import { useStores } from '@directus/extensions-sdk'
 
-/**
- * O valor do campo (string/text) É o slug.
- * A interface só renderiza iFrame do domínio permitido:
- *   https://ijewel.design/embedded?slug=<slug>
- */
-
+// Props padrão que o Editor passa para interfaces
+// Docs: interfaces props + article de propriedades
+// - value, collection, field, fieldData, disabled, etc
 const props = defineProps({
   value: { type: String, default: '' },
+  collection: { type: String, required: true },
+  field: { type: String, required: true },
+  fieldData: { type: Object, default: null }, // contém metadados, inclusive readonly
   disabled: { type: Boolean, default: false },
-  readonly: { type: Boolean, default: false },
-  mode: { type: String, default: 'edit' }, // 'read' | 'preview' | 'edit'
 })
 
-const emit = defineEmits(['input']) // padrão do Directus: emitir 'input' com o novo valor
+const emit = defineEmits(['input'])
 
-const localValue = ref(props.value || '')
+// Permissões do usuário (Policy)
+const { usePermissionsStore } = useStores()
+const permissions = usePermissionsStore()
 
-watch(
-  () => props.value,
-  (v) => {
-    if (v !== localValue.value) localValue.value = v || ''
+// Se a Policy NÃO permite update na coleção, travamos
+const canUpdateCollection = computed(() => {
+  try {
+    return permissions.hasPermission(props.collection, 'update')
+  } catch {
+    return false
   }
-)
+})
+
+// Alguns setups marcam o field como readonly via metadados
+const isFieldReadonlyMeta = computed(() => {
+  // Em versões diferentes, pode estar em fieldData.readonly ou em fieldData.meta?.readonly
+  const fd = props.fieldData || {}
+  return Boolean(fd.readonly ?? fd?.meta?.readonly)
+})
 
 const isLocked = computed(() => {
-  return props.disabled || props.readonly || props.mode === 'read'
+  // Travar se:
+  // - o field estiver desabilitado pelo editor (disabled),
+  // - o metadado do field indicar readonly,
+  // - a policy não permitir update na coleção.
+  return props.disabled || isFieldReadonlyMeta.value || !canUpdateCollection.value
+})
+
+const localValue = ref(props.value || '')
+watch(() => props.value, (v) => {
+  if (v !== localValue.value) localValue.value = v || ''
 })
 
 function onUpdate(v) {
@@ -72,14 +91,12 @@ function onUpdate(v) {
 
 // valida slug (apenas a-z, A-Z, 0-9, -, _)
 const slugRegex = /^[A-Za-z0-9_-]+$/
-
 const safeSlug = computed(() => {
   const s = (localValue.value || '').trim()
   return s && slugRegex.test(s) ? s : ''
 })
 
 const iframeSrc = computed(() => {
-  // Garante domínio fixo e escapa o slug
   return safeSlug.value
     ? `https://ijewel.design/embedded?slug=${encodeURIComponent(safeSlug.value)}`
     : ''
@@ -87,14 +104,13 @@ const iframeSrc = computed(() => {
 </script>
 
 <style scoped>
+/* evita foco e clique quando travado (hardening visual) */
+:deep(input:disabled), :deep(textarea:disabled) {
+  pointer-events: none;
+}
 .d-flex { display: flex; }
 .flex-col { flex-direction: column; }
 .gap-3 { gap: 12px; }
 .rounded { border-radius: 8px; }
 .overflow-hidden { overflow: hidden; }
-
-/* evita foco e clique quando travado (hardening visual) */
-:deep(input:disabled), :deep(textarea:disabled) {
-  pointer-events: none;
-}
 </style>
